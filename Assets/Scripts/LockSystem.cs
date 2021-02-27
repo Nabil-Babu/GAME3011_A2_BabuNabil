@@ -9,32 +9,38 @@ public enum Difficulty
 {
     EASY,
     MED,
-    HARD
+    HARD,
+    TOTAL
 }
 public class LockSystem : MonoBehaviour
 {
-
-
     public Image TopFrame;
     public Image BottomFrame;
     public GameObject TopPick;
-    public GameObject BottomPick; 
-
+    public GameObject BottomPick;
+    public Difficulty lockDifficulty;
+    public GameObject[] tumblers;
+    public AudioSource audioSource;
+    public AudioClip sweetSpotSound;
+    public AudioClip unlockSound;
+    
     [SerializeField] private float topPickAngle;
     [SerializeField] private float bottomPickAngle;
     [SerializeField] private float bottomPickTurnRate = 0.001f;
+    [SerializeField] private int requiredTumblers = 1;
 
     [SerializeField] private float _targetTopAngle;
     [SerializeField] private float _targetBottomAngle;
     [SerializeField] private float _targetAngleThresholds = 0.500f;
-
     [SerializeField] private bool _topTargetReached = false;
     [SerializeField] private bool _bottomTargetReached = false;
 
+
+    private bool topAudioPlayed = false;
+    private bool bottomAudioPlayed = false;
     void Start()
     {
-        _targetTopAngle = 360.0f * Random.Range(0.0f, 1.0f);
-        _targetBottomAngle = 360.0f * Random.Range(0.0f, 1.0f);
+        InitLock();
     }
     
     void Update()
@@ -42,6 +48,7 @@ public class LockSystem : MonoBehaviour
         CalculatePickAngles();
         RotatePicks();
         CheckForTarget();
+        CheckUnlockAttempt();
     }
 
     void CalculatePickAngles()
@@ -78,6 +85,25 @@ public class LockSystem : MonoBehaviour
         _bottomTargetReached = Math.Abs(bottomPickAngle - _targetBottomAngle) < _targetAngleThresholds;
         TopFrame.color = _topTargetReached ? Color.green : Color.black;
         BottomFrame.color = _bottomTargetReached ? Color.green : Color.black;
+        if (_topTargetReached)
+        {
+            if(!topAudioPlayed) audioSource.PlayOneShot(sweetSpotSound);
+            topAudioPlayed = true;
+        }
+        else
+        {
+            topAudioPlayed = false;
+        }
+
+        if (_bottomTargetReached)
+        {
+            if(!bottomAudioPlayed) audioSource.PlayOneShot(sweetSpotSound);
+            bottomAudioPlayed = true;
+        }
+        else
+        {
+            bottomAudioPlayed = false;
+        }
     }
 
     void RotatePicks()
@@ -85,4 +111,43 @@ public class LockSystem : MonoBehaviour
         TopPick.transform.eulerAngles = new Vector3(0, 0, topPickAngle);
         BottomPick.transform.eulerAngles = new Vector3(0,0,bottomPickAngle);
     }
+
+    public void InitLock()
+    {
+        _targetTopAngle = 360.0f * Random.Range(0.0f, 1.0f);
+        _targetBottomAngle = 360.0f * Random.Range(0.0f, 1.0f);
+        lockDifficulty = (Difficulty) Random.Range(0, (int) Difficulty.TOTAL);
+        requiredTumblers = (int)lockDifficulty + 1;
+        DisplayTumblers();
+    }
+
+    void DisplayTumblers()
+    {
+        for (int i = 0; i < requiredTumblers; i++)
+        {
+            tumblers[i].SetActive(true);
+        }
+    }
+
+    private void CheckUnlockAttempt()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (_topTargetReached && _bottomTargetReached)
+            {
+                requiredTumblers--;
+                tumblers[requiredTumblers].SetActive(false);
+                _targetTopAngle = 360.0f * Random.Range(0.0f, 1.0f);
+                _targetBottomAngle = 360.0f * Random.Range(0.0f, 1.0f);
+                audioSource.PlayOneShot(unlockSound);
+            }
+        }
+    }
+
+    private void ResetLock()
+    {
+        InitLock();
+    }
+    
+    
 }
